@@ -1,9 +1,47 @@
 import Note from '../models/Note.js';
 
-export async function  getAllNotes(_, res) {
+export async function  getAllNotes(req, res) {
     try {
-        const notes = await Note.find().sort({ createdAt: 1}); 
-        res.status(200).json(notes);
+
+        const search = req.query.search || "";
+
+        const mediaType = req.query.mediaType || "";
+
+        const page = Number(req.query.page) || 1;
+
+        const limit = Number(req.query.limit) || 6;
+
+        const skip = (page - 1) * limit;
+
+        
+
+        const filter = {user: req.user.userId};
+
+        if (search) {
+            filter.title = {
+                $regex : search,
+                $options: "i",
+            };
+        }
+
+        if (mediaType) {
+            filter.mediaType = mediaType;
+        }
+
+        const totalNotes = await Note.countDocuments(filter) 
+
+
+        const notes = await Note.find(filter)
+        .sort({ createdAt: 1})
+        .skip(skip)
+        .limit(limit); 
+        
+        res.status(200).json({
+            notes, 
+            currentPage: page, 
+            totalPages: Math.ceil(totalNotes/limit),
+            totalNotes,
+        });
 
     } catch (error) {
         console.error("Error fetching notes:", error);
@@ -13,15 +51,16 @@ export async function  getAllNotes(_, res) {
 }
 
 export async function getNoteById(req, res) {
-    try {
-        const note = await Note.findById(req.params._id);
+    try {{
+        const note = await Note.findOne({_id: req.params._id, user: req.user.userId,});
 
         if (!note) {
             return res.status(404).json({ message: "Notes not found" });
         }
         res.status(200).json(note);
 
-    } catch (error) {
+    } 
+      }catch (error) {
         console.error("Error fetching note:", error);
         res.status(500).json({ message: "Internal Server Error" });
     }
@@ -30,7 +69,25 @@ export async function getNoteById(req, res) {
 export async function createNotes(req, res) {
     try {
         const {title, content} = req.body;
-        const note = new Note({title, content});
+
+        let mediaUrl = "";
+        let mediaType = "";
+
+        if (req.file) {
+            if (req.file.mimetype.startsWith("image")) {
+                mediaType = "image";
+
+                mediaUrl = `/upload/images/${req.file.filename}`;
+            } else if (req.file.mimetype.startsWith("video")) {
+                mediaType = "video";
+
+                mediaUrl = `/upload/videos/${req.file.filename}`; 
+            }
+        }
+
+        const note = new Note({title, content, mediaType, mediaUrl, user: req.user.userId });
+
+
 
         const savedNote = await note.save();
         res.status(201).json(savedNote);
@@ -44,7 +101,25 @@ export async function createNotes(req, res) {
 export async function updateNotes(req, res) {
     try {
         const {title, content} = req.body;
-        const updatedNote = await Note.findByIdAndUpdate(req.params.id, {title, content}, { new: true });
+
+        const updateData = {
+            title,
+            content,
+        };
+
+        if(req.file) {
+            if(req.file.mimetype.startsWith("image")){
+                updateData.mediaType = "image";
+
+                updateData.mediaUrl = `/upload/images/${req.file.filename}`;
+            } else if ( req.file.mimetype.startsWith("video")) {
+                updateData.mediaType = "video";
+
+                updateData.mediaUrl = `/upload/videos/${req.file.filename}`;
+            }
+        }
+
+        const updatedNote = await Note.findByIdAndUpdate({_id: req.params.id, user: req.user.userId, }, updateData, { new: true });
 
         if(!updatedNote){
             return res.status(404).json({ message: "Note not found" });
@@ -58,7 +133,7 @@ export async function updateNotes(req, res) {
 
 export async function deleteNotes(req, res) {
     try {
-         const deletedNote = await Note.findByIdAndDelete(req.params.id);
+         const deletedNote = await Note.findByIdAndDelete({_id: req.params.id, user: req.user.userId});
 
          if (!deletedNote) {
             return res.status(404).json({ message: "Note not found" });

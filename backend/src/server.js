@@ -4,6 +4,8 @@ import { connectDB }from './config/db.js';
 import dotenv from 'dotenv';
 import rateLimiter from './middleware/rateLimiter.js';
 import cors from 'cors';
+import authRoutes from "./routes/authRoutes.js"
+import adminRoutes from "./routes/adminRoutes.js";
 
 
 dotenv.config();
@@ -18,9 +20,12 @@ app.use(cors({
 
 // Middleware to parse JSON bodies
 app.use(express.json());
+app.use("/upload", express.static("upload"));
 app.use(rateLimiter); // Apply rate limiter middleware to all routes
 
  app.use("/api/notes", notesRoutes); 
+ app.use("/api/auth", authRoutes);
+ app.use("/api/admin", adminRoutes);
 
 
 connectDB().then(() => {

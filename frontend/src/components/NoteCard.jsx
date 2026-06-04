@@ -27,6 +27,25 @@ const NoteCard = ({ note, setNotes }) => {
     return (
         <Link to={`/note/${note._id}`} className="card bg-base-100 hover:shadow-lg transition-all duration-200 border-t-4 border-solid border-[#00FF9D]">
             <div className="card-body">
+
+                {note.mediaType === "image" && (
+                    <img
+                        src={`http://localhost:5001${note.mediaUrl}`}
+                        alt={note.title}
+                        className = "w-full h-52 object-cover rounded-xl"
+                    />
+                )}
+
+                {note.mediaType === "video" && (
+                    <video
+                        controls
+                        className="w-full h-52 rounded-xl object-cover"
+                    >
+                        <source
+                            src={`http://localhost:5001${note.mediaUrl}`}
+                        />
+                    </video>
+                )}
                 <h2 className="card-title text-base-content">{note.title}</h2>
                 <p className="text-base-content/70 line-clamp-3">{note.content}</p>
                 <div className="card-actions justify-between items-center mt-4">

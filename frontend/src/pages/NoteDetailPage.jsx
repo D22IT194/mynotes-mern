@@ -9,6 +9,7 @@ const NoteDetailPage = () => {
   const [note, setNote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [media, setMedia] = useState(null);
 
   const navigate = useNavigate();
   const { id } = useParams();
@@ -51,13 +52,40 @@ const NoteDetailPage = () => {
     setSaving(true);
 
     try {
-      await api.put(`/notes/${id}`, note);
+      const formData = new FormData();
+
+      formData.append("title", note.title);
+      formData.append("content", note.content);
+
+      if (media) {
+        formData.append("media", media);
+      }
+
+
+      await api.put(`/notes/${id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        },
+
+      }
+      );
+
       toast.success("Notes Updated SuccessFully")
       navigate("/")
     } catch (error) {
       console.log("Error saving the note : ", error);
-      toast.error("Failed to update note")
-    } finally {
+
+      if (error.response?.data?.errors) {
+        error.response.data.errors.forEach((err) => {
+          toast.error(err.message);
+        })
+
+      } else {
+        toast.error("Failed to update note")
+      }
+
+    }
+    finally {
       setSaving(false);
     }
   };
@@ -87,6 +115,26 @@ const NoteDetailPage = () => {
 
           <div className="card bg-base-100 shadow-md">
             <div className="card-body">
+
+              {note.mediaType === "image" && (
+                <img
+                  src={`http://localhost:5001${note.mediaUrl}`}
+                  alt={note.title}
+                  className="w-full h-72 object-cover rounded-xl mb-4"
+                />
+              )}{note.mediaType === "video" && (
+                <video
+                  controls
+                  className="w-full h-72 rounded-xl mb-4"
+                >
+                  <source
+                    src={`http://localhost:5001${note.mediaUrl}`}
+                  />
+                </video>
+              )}
+
+
+
               {/* Title Field */}
               <div className="form-control w-full mb-4">
                 <label className="label">
@@ -114,23 +162,40 @@ const NoteDetailPage = () => {
                 />
               </div>
 
-{/* Action Button */}
-<div className="card-actions justify-end">
-  <button
-    onClick={handleSave}
-    className="btn btn-primary"
-    disabled={saving}
-  >
-    {saving ? (
-      <>
-        <span className="loading loading-spinner loading-xs color-primary"></span>
-        Saving...
-      </>
-    ) : (
-      "Save Changes"
-    )}
-  </button>
-</div>
+              <div className="form-control w-full mb-4">
+
+                <label className="label">
+                  <span className="label-text font-medium">
+                    Upload Image / Video
+                  </span>
+                </label>
+
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  className="file-input file-input-bordered w-full"
+                  onChange={(e) => setMedia(e.target.files[0])}
+                />
+
+              </div>
+
+              {/* Action Button */}
+              <div className="card-actions justify-end">
+                <button
+                  onClick={handleSave}
+                  className="btn btn-primary"
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs color-primary"></span>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </button>
+              </div>
 
             </div>
           </div>
